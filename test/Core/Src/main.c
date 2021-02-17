@@ -42,6 +42,8 @@ uint8_t pData[EMR_I2C_PACKET_SIZE];
 uint8_t send_data[128];
 uint8_t aRxBuffer[5];
 uint8_t i ;
+#define MAX_X   29376
+#define MAX_Y	 16524 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -126,7 +128,7 @@ uint8_t EMR_Alive_Check(void)
 
 }
 
-uint16_t x ,y ;
+int16_t x ,y ;
 
 void Handle_EMR_to_USB()
 {
@@ -136,14 +138,16 @@ void Handle_EMR_to_USB()
 		send_data[1]=(pData[3]);
 	
 		/*x*/
-		x = 29376-(pData[4] + (pData[5]<<8)) ;
+		x = MAX_X-(pData[4] + (pData[5]<<8)) ;
+		if(x<0)return;
 		//send_data[2]=(pData[4]);
 		//send_data[3]=(pData[5]);
 		send_data[2]=(x&0xff);
 		send_data[3]=(x>>8);
 	
 		/*y*/
-		y = 16524-(pData[6] + (pData[7]<<8) ) ;
+		y = MAX_Y-(pData[6] + (pData[7]<<8) ) ;
+	   if(y<0)return;
 		//send_data[4]=(pData[6]);
 		//send_data[5]=(pData[7]);
 		send_data[4] = y&0xff ;
