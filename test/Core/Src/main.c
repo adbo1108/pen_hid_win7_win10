@@ -128,7 +128,7 @@ uint8_t EMR_Alive_Check(void)
 
 }
 
-int16_t x ,y ;
+int16_t x ,y ,p;
 
 void Handle_EMR_to_USB()
 {
@@ -153,11 +153,11 @@ void Handle_EMR_to_USB()
 		send_data[4] = y&0xff ;
 		send_data[5]= (y >>8) ;
 	
-	
+		
 		/*pressure*/
-		send_data[6]=pData[8];
-		send_data[7]=pData[9];
-
+		send_data[6]=pData[8];//low byte
+		send_data[7]=pData[9];//high byte
+		
 	//	result = USBD_CUSTOM_HID_SendReport_FS(send_data,9) ;
 		 USBD_CUSTOM_HID_SendReport_FS(send_data,8) ;
 }	

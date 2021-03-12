@@ -80,7 +80,7 @@
 /*---------- -----------*/
 #define USBD_CUSTOM_HID_REPORT_DESC_SIZE     162U
 /*---------- -----------*/
-#define CUSTOM_HID_FS_BINTERVAL     0x2U
+#define CUSTOM_HID_FS_BINTERVAL     90U//0x100U
 
 /****************************************/
 /* #define for FS and HS identification */
