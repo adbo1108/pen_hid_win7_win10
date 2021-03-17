@@ -115,7 +115,7 @@ __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DES
         0x09, 0x01,                    //   USAGE (Undefined)
         0xb1, 0x02,                    //   FEATURE (Data,Var,Abs)
 #endif
-#if 1
+#if 0
  0x05, 0x0d,                    // USAGE_PAGE (Digitizers)
     0x09, 0x02,                    // USAGE (Pen)
     0xa1, 0x01,                    // COLLECTION (Application)
@@ -196,6 +196,69 @@ __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DES
     0x95, 0x0c,                    //   REPORT_COUNT (12)
     0xb1, 0x02,                    //   FEATURE (Data,Var,Abs)
 #endif
+  
+#if 1
+	0x06, 0x00, 0xFF,  // Usage Page (Vendor Defined 0xFF00)
+	0x09, 0x01,        // Usage (0x01)
+	0xA1, 0x01,        // Collection (Application)
+	0x85, 0x03,        //   Report ID (3)
+	0x15, 0x00,        //   Logical Minimum (0)
+	0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+	0x75, 0x08,        //   Report Size (8)
+	0x95, 0x08,        //   Report Count (8)
+	0x09, 0x01,        //   Usage (0x01)
+	0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x95, 0x40,        //   Report Count (64)
+	0x09, 0x01,        //   Usage (0x01)
+	0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+	0x95, 0x01,        //   Report Count (1)
+	0x09, 0x01,        //   Usage (0x01)
+	0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+	0xC0,              // End Collection
+	0x05, 0x0D,        // Usage Page (Digitizer)
+	0x09, 0x02,        // Usage (Pen)
+	0xA1, 0x01,        // Collection (Application)
+	0x85, 0x02,        //   Report ID (2)
+	0x09, 0x20,        //   Usage (Stylus)
+	0xA1, 0x00,        //   Collection (Physical)
+	0x09, 0x42,        //     Usage (Tip Switch)
+	0x09, 0x44,        //     Usage (Barrel Switch)
+	0x09, 0x45,        //     Usage (Eraser)
+	0x09, 0x3C,        //     Usage (Invert)
+	0x09, 0x5A,        //     Usage (0x5A)
+	0x09, 0x32,        //     Usage (In Range)
+	0x15, 0x00,        //     Logical Minimum (0)
+	0x25, 0x01,        //     Logical Maximum (1)
+	0x75, 0x01,        //     Report Size (1)
+	0x95, 0x06,        //     Report Count (6)
+	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x95, 0x02,        //     Report Count (2)
+	0x81, 0x03,        //     Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x05, 0x01,        //     Usage Page (Generic Desktop Ctrls)
+	0x09, 0x30,        //     Usage (X)
+	0x26, 0xC0, 0x72,  //     Logical Maximum (29376)
+	0x46, 0xC0, 0x72,  //     Physical Maximum (29376)
+	0x65, 0x11,        //     Unit (System: SI Linear, Length: Centimeter)
+	0x55, 0x0E,        //     Unit Exponent (-2)
+	0x75, 0x10,        //     Report Size (16)
+	0x95, 0x01,        //     Report Count (1)
+	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x09, 0x31,        //     Usage (Y)
+	0x26, 0x8C, 0x40,  //     Logical Maximum (16524)
+	0x46, 0x8C, 0x40,  //     Physical Maximum (16524)
+	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x45, 0x00,        //     Physical Maximum (0)
+	0x65, 0x00,        //     Unit (None)
+	0x55, 0x00,        //     Unit Exponent (0)
+	0x05, 0x0D,        //     Usage Page (Digitizer)
+	0x09, 0x30,        //     Usage (Tip Pressure)
+	0x26, 0xFF, 0x0F,  //     Logical Maximum (4095)
+	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0xC0,              //   End Collection
+#endif
+  
+  
+  
   /* USER CODE END 0 */
   0xC0    /*     END_COLLECTION	             */
 };
@@ -228,7 +291,7 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 static int8_t CUSTOM_HID_Init_FS(void);
 static int8_t CUSTOM_HID_DeInit_FS(void);
-static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state);
+static int8_t CUSTOM_HID_OutEvent_FS(uint8_t* buf);
 
 /**
   * @}
@@ -271,21 +334,29 @@ static int8_t CUSTOM_HID_DeInit_FS(void)
   /* USER CODE END 5 */
 }
 
+uint8_t buffer[128];
 /**
   * @brief  Manage the CUSTOM HID class events
   * @param  event_idx: Event index
   * @param  state: Event state
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-static int8_t CUSTOM_HID_OutEvent_FS(uint8_t event_idx, uint8_t state)
+static int8_t CUSTOM_HID_OutEvent_FS(uint8_t* buf)
 {
   /* USER CODE BEGIN 6 */
-  UNUSED(event_idx);
-  UNUSED(state);
+  uint8_t i = 0 ;
+  memcpy(buffer,buf,65);
+   
+    for(i=0; i<CUSTOM_HID_EPOUT_SIZE; i++)
+    {
+        printf("Receive Report_buf[%d]=0x%x\n\r",i,buffer[i]);
+    }    
 
   /* Start next USB packet transfer once data processing is completed */
   USBD_CUSTOM_HID_ReceivePacket(&hUsbDeviceFS);
-
+	
+	/*Resend data for test */ 
+ // USBD_CUSTOM_HID_SendReport_FS(buffer,9) ;
   return (USBD_OK);
   /* USER CODE END 6 */
 }

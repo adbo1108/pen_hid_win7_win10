@@ -132,6 +132,8 @@ int16_t x ,y ,p;
 
 void Handle_EMR_to_USB()
 {
+		
+	
 		send_data[0]=REPORT_ID;
 	
 		
@@ -158,13 +160,15 @@ void Handle_EMR_to_USB()
 		send_data[6]=pData[8];//low byte
 		send_data[7]=pData[9];//high byte
 		
-	//	result = USBD_CUSTOM_HID_SendReport_FS(send_data,9) ;
+	
 		 USBD_CUSTOM_HID_SendReport_FS(send_data,8) ;
+	//	 send_data[0]=0x03 ;
+	//	 USBD_CUSTOM_HID_SendReport_FS(send_data,9) ;
+		 
 }	
 
 
-void Handle_EMR_Data ()
-	
+void Handle_EMR_Data ()	
 {
 
 	if(EMR_INT)
@@ -176,29 +180,30 @@ void Handle_EMR_Data ()
 		/*一直讀到中斷Rising Trigger */
 		while(1)
 		{
-		if(EMR_INT == 0) break;	
-		status =  HAL_I2C_Master_Receive(&hi2c1, EMR_I2C_ADDR_8BIT, pData, EMR_I2C_PACKET_SIZE, 100);
+			if(EMR_INT == 0) break;	
+			status =  HAL_I2C_Master_Receive(&hi2c1, EMR_I2C_ADDR_8BIT, pData, EMR_I2C_PACKET_SIZE, 100);
 		
-		if(status == HAL_ERROR)
-		{
-			printf("i2c HAL_ERROR\n\r");
-			ResetEMR() ;
-			break;
+			if(status == HAL_ERROR)
+			{
+				printf("i2c HAL_ERROR\n\r");
+				ResetEMR() ;
+				break;
 			
-		}
-		else if(status == HAL_BUSY)
-		{
-			printf("i2c HAL_BUSY\n\r");
-			ResetEMR() ;
-			break;
-		}
-		else if(status == HAL_TIMEOUT)
-		{
-			printf("i2c HAL_TIMEOUT\n\r");
-			ResetEMR() ;
-			break;
-		}	
-		else if (status == HAL_OK){
+			}
+			else if(status == HAL_BUSY)
+			{
+				printf("i2c HAL_BUSY\n\r");
+				ResetEMR() ;
+				break;
+			}
+			else if(status == HAL_TIMEOUT)
+			{
+				printf("i2c HAL_TIMEOUT\n\r");
+				ResetEMR() ;
+				break;
+			}	
+			else if (status == HAL_OK)
+			{
 #if 1			
 		//	printf("receive EMR Data %d\n\r",EMR_I2C_PACKET_SIZE);
 		//	for(i=0;i<EMR_I2C_PACKET_SIZE ; i++ )
@@ -206,10 +211,10 @@ void Handle_EMR_Data ()
 		//	printf("\n\r");
 #endif			
 	//	 USBD_CUSTOM_HID_SendReport_FS(pData,EMR_I2C_PACKET_SIZE) ;
-		Handle_EMR_to_USB();
-		}
+				Handle_EMR_to_USB();
+			}
 				
-	}
+		}
 		EMR_Alive_Check();
 	}	
 	
@@ -223,12 +228,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		if(HAL_GPIO_ReadPin(EMR_INT_GPIO_Port,EMR_INT_Pin) == RESET)
 		{
 			EMR_INT = 1;
-			printf("1");
+		//	printf("1");
 		}	
 		else
 		{
 			EMR_INT = 0;
-			printf("0");
+		//	printf("0");
 		}
 		
 	//	Handle_EMR_Data ();
