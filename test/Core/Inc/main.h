@@ -32,7 +32,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "sw_iic.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -58,6 +58,11 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SW_IIC_SDA_Pin GPIO_PIN_9
+#define SW_IIC_SDA_GPIO_Port GPIOC
+#define SW_IIC_SCL_Pin GPIO_PIN_8
+#define SW_IIC_SCL_GPIO_Port GPIOA
+
 #define EMR_INT_Pin GPIO_PIN_4
 #define EMR_INT_GPIO_Port GPIOB
 #define EMR_INT_EXTI_IRQn EXTI4_IRQn
@@ -65,6 +70,13 @@ void Error_Handler(void);
 #define EMR_RST_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
+
+ extern   uint8_t aRxBuffer[64];
+ extern   uint8_t page_buf_full_idx ,flag_start_fill_page_buf ;
+ extern uint8_t page_idx;
+ extern   volatile uint8_t page_buf[512];
+  
+  
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

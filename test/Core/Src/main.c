@@ -40,8 +40,16 @@ extern UART_HandleTypeDef huart6;
 extern GPIO_InitTypeDef GPIO_InitStruct ;
 uint8_t pData[EMR_I2C_PACKET_SIZE];
 uint8_t send_data[128];
-uint8_t aRxBuffer[5];
+uint8_t  aRxBuffer[64];
+
 uint8_t i ;
+volatile uint8_t  page_buf[512];
+
+uint8_t  page_buf_full_idx = 0 ,flag_start_fill_page_buf = 0;
+
+uint8_t test_buf[64];
+
+
 #define MAX_X   29376
 #define MAX_Y	 16524 
 /* USER CODE END PTD */
@@ -93,6 +101,46 @@ int fputc(int32_t ch, FILE *f)
         
     return ch;
 }
+
+
+
+
+void handle_buffer() {
+
+#if 0
+   uint16_t i ;
+	printf("usb reveive : \n\r");
+  for(i=0 ; i<64 ;i++)
+  {
+	  printf(",0x%x",aRxBuffer[i]);
+  }
+	printf("\n\r");
+#endif
+	
+//	USBD_CUSTOM_HID_SendReport_FS(aRxBuffer,8) ;   
+	
+	if(flag_start_fill_page_buf)
+	{	 
+		if((memcmp(aRxBuffer,CMD_SET_BANK0,11)!= 0) 
+			&& ( memcmp(aRxBuffer,CMD_SET_BANK1,11)!= 0) 
+			&& ( memcmp(aRxBuffer,CMD_SET_BANK2,11)!= 0) 
+			&& ( memcmp(aRxBuffer,CMD_SET_BANK3,11)!= 0)
+			&& ( memcmp(aRxBuffer,CMD_START_FLASH,11)!= 0)
+			&& ( memcmp(aRxBuffer,CMD_END_FLASH,11)!= 0))
+		{	
+			 
+			if(page_buf_full_idx < 16)
+			{
+				memcpy((page_buf+(32*page_buf_full_idx)),aRxBuffer,32);
+				page_buf_full_idx++ ;
+				
+			
+			}			 
+		}
+		 //USBD_CUSTOM_HID_SendReport_FS(rxBuffer,8) ;      
+    }
+}
+
 
 
 void ResetEMR()
@@ -294,15 +342,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  
+	  if( memcmp(aRxBuffer,CMD_START_FLASH,11)== 0)
+	  {
+			printf("enter isp\n\r");
+		
+		   ISP_Process();
+	  }
+	 
 #if 0	  
 	  HAL_Delay(1000);
-	  	send_data[0]=0x02;
-   for(i=1;i<9;i++)
-   {
-      send_data[i]=0x01;
-   }
+	 test_process();
+	  
 #endif
- Handle_EMR_Data () ;	  
+     Handle_EMR_Data () ;	  
         
   //USBD_CUSTOM_HID_SendReport(&hUsbDeviceFS,send_data,9);
   }
@@ -466,6 +519,12 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  
+    /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(SW_IIC_SDA_GPIO_Port, SW_IIC_SDA_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(SW_IIC_SCL_GPIO_Port, SW_IIC_SCL_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
@@ -475,6 +534,21 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+  
+  
+   /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = SW_IIC_SDA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+  HAL_GPIO_Init(SW_IIC_SDA_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = SW_IIC_SCL_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+  HAL_GPIO_Init(SW_IIC_SCL_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PA9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;

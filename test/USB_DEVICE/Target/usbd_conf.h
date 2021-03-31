@@ -76,7 +76,7 @@
 /*---------- -----------*/
 #define USBD_SELF_POWERED     1U
 /*---------- -----------*/
-#define USBD_CUSTOMHID_OUTREPORT_BUF_SIZE     0x40
+#define USBD_CUSTOMHID_OUTREPORT_BUF_SIZE     64
 /*---------- -----------*/
 #define USBD_CUSTOM_HID_REPORT_DESC_SIZE    120// 85// 162U
 /*---------- -----------*/

@@ -208,8 +208,9 @@ __ALIGN_BEGIN static uint8_t CUSTOM_HID_ReportDesc_FS[USBD_CUSTOM_HID_REPORT_DES
 	0x95, 0x08,        //   Report Count (8)
 	0x09, 0x01,        //   Usage (0x01)
 	0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-	0x95, 0x40,        //   Report Count (64)
+	0x95, 32,//0x40,        //   Report Count (64)
 	0x09, 0x01,        //   Usage (0x01)
+	//0x85, 0x03,        //   Report ID (3)
 	0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
 	0x95, 0x01,        //   Report Count (1)
 	0x09, 0x01,        //   Usage (0x01)
@@ -334,23 +335,25 @@ static int8_t CUSTOM_HID_DeInit_FS(void)
   /* USER CODE END 5 */
 }
 
-uint8_t buffer[128];
+uint8_t buffer[65];
 /**
   * @brief  Manage the CUSTOM HID class events
   * @param  event_idx: Event index
   * @param  state: Event state
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
-static int8_t CUSTOM_HID_OutEvent_FS(uint8_t* buf)
+static int8_t CUSTOM_HID_OutEvent_FS(uint8_t* buff)
 {
   /* USER CODE BEGIN 6 */
   uint8_t i = 0 ;
-  memcpy(buffer,buf,65);
+  memset(buffer , 0 ,sizeof(buffer));
+  memcpy(aRxBuffer,buff+1,32);
+  handle_buffer() ;
    
-    for(i=0; i<CUSTOM_HID_EPOUT_SIZE; i++)
-    {
-        printf("Receive Report_buf[%d]=0x%x\n\r",i,buffer[i]);
-    }    
+//    for(i=0; i<33; i++)
+//    {
+//        printf("Receive Report_buf[%d]=%d\n\r",i,buffer[i]);
+//    }    
 
   /* Start next USB packet transfer once data processing is completed */
   USBD_CUSTOM_HID_ReceivePacket(&hUsbDeviceFS);
