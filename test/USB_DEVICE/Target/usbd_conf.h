@@ -78,7 +78,7 @@
 /*---------- -----------*/
 #define USBD_CUSTOMHID_OUTREPORT_BUF_SIZE     64
 /*---------- -----------*/
-#define USBD_CUSTOM_HID_REPORT_DESC_SIZE    120// 85// 162U
+#define USBD_CUSTOM_HID_REPORT_DESC_SIZE    185// 85// 162U
 /*---------- -----------*/
 #define CUSTOM_HID_FS_BINTERVAL     5U//90U//0x100U
 

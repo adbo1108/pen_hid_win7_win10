@@ -48,7 +48,42 @@ volatile uint8_t  page_buf[512];
 uint8_t  page_buf_full_idx = 0 ,flag_start_fill_page_buf = 0;
 
 uint8_t test_buf[64];
+	
 
+uint16_t tip_cnt = 0 ;
+uint16_t press_cnt = 0 ;
+
+/*
+	0: pen mode
+	1: zoom mode
+*/	
+uint8_t working_mode = 0;
+
+	
+typedef struct
+{
+	uint8_t KEYPAD_ID ; // 0x01
+	/* b0 : left ctrl
+		b1 : left shift
+		b2 : left alt
+		b3 : left GUI
+		b4 : right ctrl
+		b5 : right shift
+		b6 : right alt
+		b7 : right GUI	
+	*/
+	uint8_t MODIFIER ;
+	
+	uint8_t RESERVED ;
+	uint8_t KEYCODE1 ; //0x56 Keypad - ; 0x57 keypad +
+	uint8_t KEYCODE2 ;
+	uint8_t KEYCODE3 ;
+	uint8_t KEYCODE4 ;
+	uint8_t KEYCODE5 ;
+	uint8_t KEYCODE6 ;
+}KeyboardHID ;	
+
+KeyboardHID keyboard_hid = {1,0,0,0,0,0,0,0,0};
 
 #define MAX_X   29376
 #define MAX_Y	 16524 
@@ -103,7 +138,35 @@ int fputc(int32_t ch, FILE *f)
 }
 
 
+void keypad_zoom_in()
+{
+	keyboard_hid.KEYPAD_ID = 0x01 ;
+	keyboard_hid.MODIFIER = 1 ; //b0=left ctrl
+	keyboard_hid.KEYCODE1 = 0x57 ; // keypad +
+	
+	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
+	HAL_Delay(50);	
+	keyboard_hid.MODIFIER = 0 ; // release
+	keyboard_hid.KEYCODE1 = 0 ; // release	
+	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
+	HAL_Delay(100);
+	
+}	
 
+void keypad_zoom_out()
+{
+	keyboard_hid.KEYPAD_ID = 0x01 ;
+	keyboard_hid.MODIFIER = 1 ; //b0=left ctrl
+	keyboard_hid.KEYCODE1 = 0x56 ; // keypad -
+	
+	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
+	HAL_Delay(50);	
+	keyboard_hid.MODIFIER = 0 ; // release
+	keyboard_hid.KEYCODE1 = 0 ; // release	
+	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
+	HAL_Delay(100);
+	
+}	
 
 void handle_buffer() {
 
@@ -215,10 +278,37 @@ void Handle_EMR_to_USB()
 		 
 }	
 
+void Handle_ZOOM_IN_OUT ()
+{
+	
+	//printf("Tip Switch = %x\n\r",(pData[3]&0x01));
+	uint8_t Tip_Switch = pData[3]&0x01 ;
+	y = MAX_Y-(pData[6] + (pData[7]<<8) ) ;
+	
+	if(Tip_Switch == 1)
+	{
+		tip_cnt ++ ;
+		if(tip_cnt == 10 && y<7000)
+		{
+			keypad_zoom_in();
+			printf("zoom in\n\r");
+		}
+		else if(tip_cnt == 10 && y>10000)
+		{
+			keypad_zoom_out();
+			printf("zoom out\n\r");
+		}
+	}
+	else
+	{
+		tip_cnt =0 ;
+	}
+}	
 
 void Handle_EMR_Data ()	
 {
-
+	uint8_t Barrel_Switch = 0 ;
+	
 	if(EMR_INT)
 	{	
 	//	printf("EMR INT\n\r");
@@ -230,6 +320,8 @@ void Handle_EMR_Data ()
 		{
 			if(EMR_INT == 0) break;	
 			status =  HAL_I2C_Master_Receive(&hi2c1, EMR_I2C_ADDR_8BIT, pData, EMR_I2C_PACKET_SIZE, 100);
+			
+			
 		
 			if(status == HAL_ERROR)
 			{
@@ -259,7 +351,40 @@ void Handle_EMR_Data ()
 		//	printf("\n\r");
 #endif			
 	//	 USBD_CUSTOM_HID_SendReport_FS(pData,EMR_I2C_PACKET_SIZE) ;
-				Handle_EMR_to_USB();
+			
+#if 0			
+				printf("Tip Switch = %x\n\r",(pData[3]&0x01));
+				printf("Barrel Switch = %x\n\r",(pData[3]&0x02)>>1);
+				printf("Eraser = %x\n\r",(pData[3]&0x04)>>2);
+				printf("Invert = %x\n\r",(pData[3]&0x08)>>3);
+				printf("In Range = %x\n\r",(pData[3]&0x20)>>5);
+				printf("*************************************\n\r");
+#endif				
+				Barrel_Switch = (pData[3]&0x02)>>1 ;
+				if(Barrel_Switch == 1)
+				{
+					press_cnt ++ ;
+					if(press_cnt == 20)
+					{
+						//switch mode
+						working_mode = (~working_mode)&0x01 ;
+						printf("working mode = %x\n\r",working_mode);
+					}						
+				}
+				else
+				{
+					press_cnt = 0 ;
+				}
+				
+				if(Barrel_Switch == 0 && working_mode == 0)
+				{	
+					Handle_EMR_to_USB();
+				}
+				else if(Barrel_Switch == 0 && working_mode == 1)
+				{
+					Handle_ZOOM_IN_OUT();
+				}
+					
 			}
 				
 		}
@@ -349,7 +474,8 @@ int main(void)
 		
 		   ISP_Process();
 	  }
-	 
+	  
+	  
 #if 0	  
 	  HAL_Delay(1000);
 	 test_process();
