@@ -50,8 +50,8 @@ uint8_t  page_buf_full_idx = 0 ,flag_start_fill_page_buf = 0;
 uint8_t test_buf[64];
 	
 
-uint16_t tip_cnt = 0 ;
-uint16_t press_cnt = 0 ;
+
+uint32_t press_cnt = 0 ;
 
 /*
 	0: pen mode
@@ -145,11 +145,11 @@ void keypad_zoom_in()
 	keyboard_hid.KEYCODE1 = 0x57 ; // keypad +
 	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
-	HAL_Delay(50);	
+	HAL_Delay(10);	
 	keyboard_hid.MODIFIER = 0 ; // release
 	keyboard_hid.KEYCODE1 = 0 ; // release	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
-	HAL_Delay(100);
+	HAL_Delay(10);
 	
 }	
 
@@ -160,11 +160,11 @@ void keypad_zoom_out()
 	keyboard_hid.KEYCODE1 = 0x56 ; // keypad -
 	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
-	HAL_Delay(50);	
+	HAL_Delay(10);	
 	keyboard_hid.MODIFIER = 0 ; // release
 	keyboard_hid.KEYCODE1 = 0 ; // release	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
-	HAL_Delay(100);
+	HAL_Delay(10);
 	
 }	
 
@@ -276,38 +276,57 @@ void Handle_EMR_to_USB()
 	//	 send_data[0]=0x03 ;
 	//	 USBD_CUSTOM_HID_SendReport_FS(send_data,9) ;
 		 
-}	
+}
+
+uint16_t temp_y ;
+uint16_t falling_cnt = 0 ;
+uint16_t rising_cnt = 0 ;
+
+#define ZOOM_ONE_SHOT
 
 void Handle_ZOOM_IN_OUT ()
 {
 	
 	//printf("Tip Switch = %x\n\r",(pData[3]&0x01));
-	uint8_t Tip_Switch = pData[3]&0x01 ;
+	//uint8_t Tip_Switch = pData[3]&0x01 ;
 	y = MAX_Y-(pData[6] + (pData[7]<<8) ) ;
-	
-	if(Tip_Switch == 1)
+	//printf("Tip Switch = %x\n\r",Tip_Switch);
+	//if(Tip_Switch == 1)
 	{
-		tip_cnt ++ ;
-		if(tip_cnt == 10 && y<7000)
+		if(y>(temp_y+30))
 		{
-			keypad_zoom_in();
-			printf("zoom in\n\r");
+			falling_cnt ++ ;
+			if(falling_cnt == 4)
+			{
+			
+				keypad_zoom_in();
+				falling_cnt =0 ;
+				rising_cnt = 0 ;
+				temp_y = 0 ;
+			}
 		}
-		else if(tip_cnt == 10 && y>10000)
+		
+		else if(y<temp_y-30)
 		{
-			keypad_zoom_out();
-			printf("zoom out\n\r");
+			rising_cnt ++ ;
+			if(rising_cnt == 4)
+			{
+			
+				keypad_zoom_out();
+				falling_cnt =0 ;
+				rising_cnt = 0 ;
+				temp_y = 0 ;
+			}
 		}
+		temp_y = y ;
 	}
-	else
-	{
-		tip_cnt =0 ;
-	}
+
 }	
 
 void Handle_EMR_Data ()	
 {
 	uint8_t Barrel_Switch = 0 ;
+	uint8_t Tip_Switch = 0 ;
 	
 	if(EMR_INT)
 	{	
@@ -347,7 +366,7 @@ void Handle_EMR_Data ()
 #if 1			
 		//	printf("receive EMR Data %d\n\r",EMR_I2C_PACKET_SIZE);
 		//	for(i=0;i<EMR_I2C_PACKET_SIZE ; i++ )
-		//		printf("0x%x, ",pData[i]);
+		//		printf("%x, ",pData[i]);
 		//	printf("\n\r");
 #endif			
 	//	 USBD_CUSTOM_HID_SendReport_FS(pData,EMR_I2C_PACKET_SIZE) ;
@@ -360,37 +379,45 @@ void Handle_EMR_Data ()
 				printf("In Range = %x\n\r",(pData[3]&0x20)>>5);
 				printf("*************************************\n\r");
 #endif				
+		
 				Barrel_Switch = (pData[3]&0x02)>>1 ;
-				if(Barrel_Switch == 1)
+				Tip_Switch = pData[3]&0x01 ;
+				if(Barrel_Switch == 1 && Tip_Switch == 1)
 				{
 					press_cnt ++ ;
-					if(press_cnt == 20)
+					if(press_cnt % 23 ==0)
 					{
-						//switch mode
-						working_mode = (~working_mode)&0x01 ;
-						printf("working mode = %x\n\r",working_mode);
+						
+						Handle_ZOOM_IN_OUT ();
 					}						
+				}
+				
+				else if(Barrel_Switch == 1 && Tip_Switch == 0)
+				{
+					falling_cnt =0 ;
+					rising_cnt = 0 ;
+					temp_y = 0 ;
+										
+					press_cnt = 0 ;
 				}
 				else
 				{
+					falling_cnt =0 ;
+					rising_cnt = 0 ;
+					temp_y = 0 ;
+										
 					press_cnt = 0 ;
-				}
-				
-				if(Barrel_Switch == 0 && working_mode == 0)
-				{	
 					Handle_EMR_to_USB();
-				}
-				else if(Barrel_Switch == 0 && working_mode == 1)
-				{
-					Handle_ZOOM_IN_OUT();
-				}
-					
+				}					
+
+												
 			}
-				
+			
 		}
 		EMR_Alive_Check();
+			
 	}	
-	
+
 }
 
 /* EMR Interrupt */
