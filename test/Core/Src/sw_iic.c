@@ -240,7 +240,7 @@ void ack_report_err() ;
 #define LOW   0
 
 
-
+void T_IIC_Tx (uint8_t data);
 
 void delay_us_(uint16_t delay) {
 	volatile uint16_t delay_t = delay * 0x3;

@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include "usbd_custom_hid_if.h"
 #include <stdio.h>
+#include "sw_iic.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -35,6 +36,8 @@ uint8_t EMR_I2C_ADDR_8BIT = 0x13 ;
 uint8_t ROTATION_0_CMD[17] = { 0x11,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x00 };
 uint8_t ROTATION_90_CMD[17] = { 0x11,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x01 };
 uint8_t EMR_INT = 0 ;
+uint8_t OSD_ON = 0 ;
+uint8_t OSD_EVENT_RELEASE = 0 ;
 extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart6;
 extern GPIO_InitTypeDef GPIO_InitStruct ;
@@ -138,6 +141,27 @@ int fputc(int32_t ch, FILE *f)
 }
 
 
+/* Send OSD control data to scaler */
+uint8_t Send_OSD_Control_to_Scaler(uint8_t event,uint8_t x_lo,uint8_t x_hi,uint8_t y_lo , uint8_t y_hi)
+{
+	uint8_t Ack,CheckSum;
+	uint8_t data[4] ;
+	data[0] = x_lo ;
+	data[1] = x_hi ;
+	data[2] = y_lo ;
+	data[3] = y_hi ;
+	//IIC_Start();
+	//T_IIC_Tx(0x6e);
+	//T_IIC_Tx(event);
+	//T_IIC_Tx(x_lo);
+	//T_IIC_Tx(x_hi);
+	//T_IIC_Tx(y_lo);
+	//T_IIC_Tx(y_hi);
+	//IIC_Stop();
+	HAL_UART_Transmit(&huart2,data,4,1000);
+	return Ack;
+}
+
 void keypad_zoom_in()
 {
 	keyboard_hid.KEYPAD_ID = 0x01 ;
@@ -145,7 +169,7 @@ void keypad_zoom_in()
 	keyboard_hid.KEYCODE1 = 0x57 ; // keypad +
 	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
-	HAL_Delay(10);	
+	HAL_Delay(5);	
 	keyboard_hid.MODIFIER = 0 ; // release
 	keyboard_hid.KEYCODE1 = 0 ; // release	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
@@ -160,7 +184,7 @@ void keypad_zoom_out()
 	keyboard_hid.KEYCODE1 = 0x56 ; // keypad -
 	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
-	HAL_Delay(10);	
+	HAL_Delay(5);	
 	keyboard_hid.MODIFIER = 0 ; // release
 	keyboard_hid.KEYCODE1 = 0 ; // release	
 	USBD_CUSTOM_HID_SendReport_FS((uint8_t*)&keyboard_hid , sizeof(keyboard_hid));
@@ -296,7 +320,7 @@ void Handle_ZOOM_IN_OUT ()
 		if(y>(temp_y+30))
 		{
 			falling_cnt ++ ;
-			if(falling_cnt == 4)
+			if(falling_cnt == 5)
 			{
 			
 				keypad_zoom_in();
@@ -309,7 +333,7 @@ void Handle_ZOOM_IN_OUT ()
 		else if(y<temp_y-30)
 		{
 			rising_cnt ++ ;
-			if(rising_cnt == 4)
+			if(rising_cnt == 6)
 			{
 			
 				keypad_zoom_out();
@@ -327,6 +351,7 @@ void Handle_EMR_Data ()
 {
 	uint8_t Barrel_Switch = 0 ;
 	uint8_t Tip_Switch = 0 ;
+	uint16_t pressure = 0 ;
 	
 	if(EMR_INT)
 	{	
@@ -363,13 +388,17 @@ void Handle_EMR_Data ()
 			}	
 			else if (status == HAL_OK)
 			{
-#if 1			
-		//	printf("receive EMR Data %d\n\r",EMR_I2C_PACKET_SIZE);
-		//	for(i=0;i<EMR_I2C_PACKET_SIZE ; i++ )
-		//		printf("%x, ",pData[i]);
-		//	printf("\n\r");
+#if 0			
+			printf("receive EMR Data %d\n\r",EMR_I2C_PACKET_SIZE);
+			for(i=0;i<EMR_I2C_PACKET_SIZE ; i++ )
+				printf("%x, ",pData[i]);
+			printf("\n\r");
+//			printf("Tx=%d , Ty=%d \n\r",(pData[11]+pData[12]<<8),(pData[13]+pData[14]<<8));	
 #endif			
 	//	 USBD_CUSTOM_HID_SendReport_FS(pData,EMR_I2C_PACKET_SIZE) ;
+				
+			//send_data[6]=pData[8];//low byte
+		   //send_data[7]=pData[9];//high byte
 			
 #if 0			
 				printf("Tip Switch = %x\n\r",(pData[3]&0x01));
@@ -377,15 +406,21 @@ void Handle_EMR_Data ()
 				printf("Eraser = %x\n\r",(pData[3]&0x04)>>2);
 				printf("Invert = %x\n\r",(pData[3]&0x08)>>3);
 				printf("In Range = %x\n\r",(pData[3]&0x20)>>5);
+				printf("Pressure = %x\n\r",(pData[8] + (pData[9] <<8)));
 				printf("*************************************\n\r");
-#endif				
-		
+#endif	
+			/*test function" OSD_ON always 1*/
+			OSD_ON = 1 ;
+			/*check OSD detect pin , normal mode*/
+			if(OSD_ON == 0)
+			{		
+				
 				Barrel_Switch = (pData[3]&0x02)>>1 ;
 				Tip_Switch = pData[3]&0x01 ;
 				if(Barrel_Switch == 1 && Tip_Switch == 1)
 				{
 					press_cnt ++ ;
-					if(press_cnt % 23 ==0)
+					if(press_cnt % 29 ==0)
 					{
 						
 						Handle_ZOOM_IN_OUT ();
@@ -412,11 +447,35 @@ void Handle_EMR_Data ()
 
 												
 			}
+			else if(OSD_ON == 1)
+			{
+				/*check OSD detect pin , OSD mode*/
+				pressure = pData[8] + (pData[9] <<8) ;
+				if(pressure == 0)
+				{
+					OSD_EVENT_RELEASE = 1;
+					
+				}
+				
+				if(OSD_EVENT_RELEASE == 1)
+				{
+					if(pressure > 1000 )
+					{
+						OSD_EVENT_RELEASE = 0;
+						/* Send data to scaler to control menu  */
+						Send_OSD_Control_to_Scaler(0x61,0x62,0x63,0x64,0x65);
+					//	printf("click!");
+						
+					}						
+				}					
+				
+			}				
 			
 		}
+	}	
 		EMR_Alive_Check();
 			
-	}	
+}	
 
 }
 
@@ -442,6 +501,21 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 	//	printf("2\n\r");	
 	}
+#if 0	
+	if(GPIO_Pin == OSD_MENU_DETECT_Pin)
+	{
+		if(HAL_GPIO_ReadPin(GPIOC,OSD_MENU_DETECT_Pin) == RESET)
+		{
+			OSD_ON = 1;
+			printf("OSD_ON\n\r");
+		}	
+		else
+		{
+		  OSD_ON = 0;
+			printf("OSD_OFF\n\r");
+		}
+	}
+#endif	
 }	
 
 
@@ -501,6 +575,8 @@ int main(void)
 		
 		   ISP_Process();
 	  }
+	  HAL_Delay(2000);
+	  Send_OSD_Control_to_Scaler(0x61,0x62,0x63,0x64,0x65);
 	  
 	  
 #if 0	  
@@ -688,7 +764,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
   
-  
+
    /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = SW_IIC_SDA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -728,6 +804,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  
+  /*Configure GPIO pin : PC12*/
+  GPIO_InitStruct.Pin = OSD_MENU_DETECT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);

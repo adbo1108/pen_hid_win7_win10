@@ -39,6 +39,7 @@ u8 IIC_Wait_Ack(void); 				   //IIC等待ACK訊號
 void IIC_Ack(void);					   //IIC發送ACK訊號
 void IIC_NAck(void);				      //IIC不發送ACK訊號
 
+void T_IIC_Tx (uint8_t data);
 
 void IIC_Write_One_Byte(u8 daddr,u8 addr,u8 data);
 u8 IIC_Read_One_Byte(u8 daddr,u8 addr);	 

@@ -68,6 +68,8 @@ void Error_Handler(void);
 #define EMR_INT_EXTI_IRQn EXTI4_IRQn
 #define EMR_RST_Pin GPIO_PIN_5
 #define EMR_RST_GPIO_Port GPIOB
+
+#define OSD_MENU_DETECT_Pin  GPIO_PIN_12
 /* USER CODE BEGIN Private defines */
 
 
